@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kisan Mausam – Farmer's Weather</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sky-top: #0a2a4a;
+      --sky-mid: #1a5276;
+      --sky-low: #2980b9;
+      --earth: #6b4423;
+      --leaf: #27ae60;
+      --leaf-dark: #1a7a43;
+      --sun: #f39c12;
+      --cream: #fef9f0;
+      --text-main: #1a1a2e;
+      --text-soft: #5d6d7e;
+      --card-bg: rgba(255,255,255,0.12);
+      --card-border: rgba(255,255,255,0.2);
+      --blur: blur(20px);
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(160deg, var(--sky-top) 0%, var(--sky-mid) 40%, var(--sky-low) 70%, #74b9c8 85%, #a8d5a2 95%, #6b8e23 100%);
+      color: #fff;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Animated clouds */
+    .clouds { position: fixed; top: 0; left: 0; width: 100%; height: 40%; pointer-events: none; z-index: 0; overflow: hidden; }
+    .cloud {
+      position: absolute;
+      background: rgba(255,255,255,0.15);
+      border-radius: 50px;
+      filter: blur(8px);
+      animation: drift linear infinite;
+    }
+    .cloud::before, .cloud::after {
+      content: '';
+      position: absolute;
+      background: inherit;
+      border-radius: 50%;
+    }
+    .c1 { width: 180px; height: 50px; top: 8%; left: -200px; animation-duration: 55s; opacity: 0.6; }
+    .c1::before { width: 80px; height: 70px; top: -30px; left: 20px; }
+    .c1::after  { width: 60px; height: 55px; top: -20px; left: 80px; }
+    .c2 { width: 240px; height: 60px; top: 18%; left: -300px; animation-duration: 75s; animation-delay: -20s; opacity: 0.4; }
+    .c2::before { width: 90px; height: 80px; top: -35px; left: 30px; }
+    .c2::after  { width: 70px; height: 65px; top: -25px; left: 110px; }
+    .c3 { width: 140px; height: 40px; top: 5%; left: -180px; animation-duration: 45s; animation-delay: -10s; opacity: 0.3; }
+    @keyframes drift { from { transform: translateX(0); } to { transform: translateX(calc(100vw + 400px)); } }
+
+    /* Stars/dots bg */
+    .stars { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+    .star { position: absolute; background: rgba(255,255,255,0.6); border-radius: 50%; animation: twinkle 3s ease-in-out infinite; }
+    @keyframes twinkle { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+    .wrapper { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 24px 16px 80px; }
+
+    /* HEADER */
+    .app-header { text-align: center; margin-bottom: 32px; animation: fadeDown 0.8s ease both; }
+    .app-header .logo { font-size: 13px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.6); margin-bottom: 4px; }
+    .app-header h1 { font-family: 'Playfair Display', serif; font-size: 2.2rem; font-weight: 900; line-height: 1.1; }
+    .app-header h1 span { color: var(--sun); }
+
+    /* SEARCH */
+    .search-bar { display: flex; gap: 10px; margin-bottom: 28px; animation: fadeDown 0.8s 0.1s ease both; }
+    .search-bar input {
+      flex: 1; padding: 14px 18px; border-radius: 16px; border: 1.5px solid var(--card-border);
+      background: rgba(255,255,255,0.15); backdrop-filter: var(--blur); color: #fff;
+      font-family: 'DM Sans', sans-serif; font-size: 15px; outline: none; transition: border 0.3s;
+    }
+    .search-bar input::placeholder { color: rgba(255,255,255,0.55); }
+    .search-bar input:focus { border-color: var(--sun); }
+    .search-bar button {
+      padding: 14px 20px; border-radius: 16px; border: none; cursor: pointer;
+      background: var(--sun); color: #1a1a2e; font-size: 16px; font-weight: 700;
+      transition: transform 0.15s, box-shadow 0.15s; box-shadow: 0 4px 20px rgba(243,156,18,0.4);
+    }
+    .search-bar button:hover { transform: scale(1.06); }
+
+    .loc-btn {
+      width: 100%; padding: 12px; border-radius: 14px; border: 1.5px solid var(--card-border);
+      background: rgba(255,255,255,0.1); backdrop-filter: var(--blur); color: #fff;
+      font-family: 'DM Sans', sans-serif; font-size: 14px; cursor: pointer; margin-bottom: 28px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.3s; animation: fadeDown 0.8s 0.15s ease both;
+    }
+    .loc-btn:hover { background: rgba(255,255,255,0.2); }
+
+    /* MAIN WEATHER CARD */
+    .main-card {
+      background: var(--card-bg); backdrop-filter: var(--blur);
+      border: 1px solid var(--card-border); border-radius: 28px;
+      padding: 28px 24px; margin-bottom: 20px;
+      animation: riseUp 0.7s 0.2s ease both;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    }
+    .location-line { display: flex; align-items: center; gap: 6px; font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 12px; }
+    .location-line svg { flex-shrink: 0; }
+    .weather-icon-wrap { text-align: center; margin: 8px 0; }
+    .weather-icon-wrap .icon { font-size: 90px; line-height: 1; filter: drop-shadow(0 8px 20px rgba(0,0,0,0.3)); animation: bob 4s ease-in-out infinite; }
+    @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    .big-temp { text-align: center; font-family: 'Playfair Display', serif; font-size: 5rem; font-weight: 900; line-height: 1; margin: 6px 0 4px; }
+    .big-temp sup { font-size: 2rem; vertical-align: super; }
+    .feels-like { text-align: center; font-size: 13px; color: rgba(255,255,255,0.65); margin-bottom: 4px; }
+    .condition { text-align: center; font-size: 1.1rem; font-weight: 500; color: rgba(255,255,255,0.9); margin-bottom: 16px; }
+    .divider { height: 1px; background: rgba(255,255,255,0.15); margin: 16px 0; }
+
+    /* STATS ROW */
+    .stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+    .stat { text-align: center; }
+    .stat .val { font-size: 1.25rem; font-weight: 700; }
+    .stat .lbl { font-size: 11px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+    .stat .ico { font-size: 22px; margin-bottom: 4px; }
+
+    /* FARMER TIPS */
+    .tip-card {
+      background: linear-gradient(135deg, rgba(39,174,96,0.3), rgba(26,122,67,0.2));
+      border: 1px solid rgba(39,174,96,0.4); border-radius: 20px;
+      padding: 18px 20px; margin-bottom: 20px;
+      animation: riseUp 0.7s 0.35s ease both;
+    }
+    .tip-card .tip-head { display: flex; align-items: center; gap: 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #a9dfbf; margin-bottom: 10px; font-weight: 600; }
+    .tip-card p { font-size: 14px; line-height: 1.6; color: rgba(255,255,255,0.9); }
+
+    /* HOURLY */
+    .section-title { font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 700; color: rgba(255,255,255,0.8); margin-bottom: 14px; letter-spacing: 0.3px; }
+    .hourly-scroll { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; animation: riseUp 0.7s 0.4s ease both; }
+    .hourly-scroll::-webkit-scrollbar { display: none; }
+    .hour-card {
+      flex-shrink: 0; background: var(--card-bg); backdrop-filter: var(--blur);
+      border: 1px solid var(--card-border); border-radius: 18px; padding: 14px 16px;
+      text-align: center; min-width: 72px; transition: transform 0.2s, background 0.2s;
+    }
+    .hour-card:hover { transform: translateY(-4px); background: rgba(255,255,255,0.2); }
+    .hour-card .h-time { font-size: 12px; color: rgba(255,255,255,0.65); margin-bottom: 6px; }
+    .hour-card .h-ico { font-size: 26px; margin-bottom: 6px; }
+    .hour-card .h-temp { font-size: 15px; font-weight: 700; }
+    .hour-card .h-rain { font-size: 11px; color: #74b9ff; margin-top: 3px; }
+    .hour-card.now { background: rgba(243,156,18,0.25); border-color: rgba(243,156,18,0.5); }
+
+    /* 7-DAY */
+    .week-grid { display: flex; flex-direction: column; gap: 10px; animation: riseUp 0.7s 0.5s ease both; }
+    .day-row {
+      background: var(--card-bg); backdrop-filter: var(--blur); border: 1px solid var(--card-border);
+      border-radius: 16px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .day-row:hover { transform: translateX(4px); background: rgba(255,255,255,0.18); }
+    .day-row .d-name { font-weight: 600; font-size: 14px; min-width: 60px; }
+    .day-row .d-ico { font-size: 24px; }
+    .day-row .d-rain { font-size: 12px; color: #74b9ff; min-width: 48px; text-align: center; }
+    .day-row .d-temps { font-size: 14px; text-align: right; }
+    .day-row .d-temps .hi { font-weight: 700; }
+    .day-row .d-temps .lo { color: rgba(255,255,255,0.55); font-size: 12px; margin-left: 6px; }
+
+    /* AIR QUALITY / UV */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; animation: riseUp 0.7s 0.55s ease both; }
+    .mini-card {
+      background: var(--card-bg); backdrop-filter: var(--blur); border: 1px solid var(--card-border);
+      border-radius: 20px; padding: 18px 16px; text-align: center;
+    }
+    .mini-card .m-ico { font-size: 32px; margin-bottom: 8px; }
+    .mini-card .m-val { font-size: 1.3rem; font-weight: 700; margin-bottom: 2px; }
+    .mini-card .m-lbl { font-size: 11px; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 1px; }
+
+    /* LOADER */
+    .loader { text-align: center; padding: 60px 0; }
+    .spinner { width: 44px; height: 44px; border: 3px solid rgba(255,255,255,0.2); border-top-color: var(--sun); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg { text-align: center; padding: 40px 20px; opacity: 0.7; font-size: 15px; }
+
+    .hidden { display: none; }
+
+    @keyframes fadeDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes riseUp  { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Footer */
+    .footer { text-align: center; font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 32px; letter-spacing: 0.5px; }
+  </style>
+</head>
+<body>
+
+<!-- Atmosphere -->
+<div class="clouds"><div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div></div>
+<div class="stars" id="stars"></div>
+
+<div class="wrapper">
+  <header class="app-header">
+    <div class="logo">🌾 Kisan Mausam</div>
+    <h1>Farmer's <span>Weather</span></h1>
+  </header>
+
+  <div class="search-bar">
+    <input id="cityInput" type="text" placeholder="Enter city or village name…" />
+    <button onclick="searchCity()">🔍</button>
+  </div>
+  <button class="loc-btn" onclick="getLocation()">📍 Use My Current Location</button>
+
+  <div id="loader" class="loader hidden"><div class="spinner"></div><p>Fetching weather…</p></div>
+  <div id="errorMsg" class="error-msg hidden">❌ Could not find weather. Check the name and try again.</div>
+
+  <div id="weatherData" class="hidden">
+    <!-- Main Card -->
+    <div class="main-card">
+      <div class="location-line">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+        <span id="locName">–</span>
+      </div>
+      <div class="weather-icon-wrap"><div class="icon" id="mainIcon">⛅</div></div>
+      <div class="big-temp" id="mainTemp">–<sup>°C</sup></div>
+      <div class="feels-like" id="feelsLike">Feels like –°C</div>
+      <div class="condition" id="conditionText">–</div>
+      <div class="divider"></div>
+      <div class="stats-row">
+        <div class="stat"><div class="ico">💧</div><div class="val" id="humidity">–%</div><div class="lbl">Humidity</div></div>
+        <div class="stat"><div class="ico">💨</div><div class="val" id="windSpeed">– km/h</div><div class="lbl">Wind</div></div>
+        <div class="stat"><div class="ico">🌧️</div><div class="val" id="rainChance">–%</div><div class="lbl">Rain</div></div>
+      </div>
+    </div>
+
+    <!-- Farmer Tip -->
+    <div class="tip-card" id="tipCard">
+      <div class="tip-head"><span>🌱</span> Farming Advice</div>
+      <p id="tipText">–</p>
+    </div>
+
+    <!-- Hourly -->
+    <div class="section-title">Today's Hourly Forecast</div>
+    <div class="hourly-scroll" id="hourlyRow"></div>
+
+    <!-- UV & Pressure -->
+    <div class="grid-2" style="margin-top:20px">
+      <div class="mini-card"><div class="m-ico">☀️</div><div class="m-val" id="uvIndex">–</div><div class="m-lbl">UV Index</div></div>
+      <div class="mini-card"><div class="m-ico">🌡️</div><div class="m-val" id="pressure">– hPa</div><div class="m-lbl">Pressure</div></div>
+    </div>
+
+    <!-- 7-Day -->
+    <div class="section-title">7-Day Outlook</div>
+    <div class="week-grid" id="weekGrid"></div>
+
+    <div class="footer" id="updatedAt"></div>
+  </div>
+</div>
+
+<script>
+  // Sprinkle stars
+  const starContainer = document.getElementById('stars');
+  for (let i = 0; i < 50; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2.5 + 1;
+    s.style.cssText = `width:${size}px;height:${size}px;top:${Math.random()*60}%;left:${Math.random()*100}%;animation-delay:${Math.random()*4}s;animation-duration:${2+Math.random()*3}s`;
+    starContainer.appendChild(s);
+  }
+
+  // WMO weather code → emoji + description
+  function decodeWMO(code, isDay = 1) {
+    const map = {
+      0: [isDay ? '☀️' : '🌙', 'Clear Sky'],
+      1: [isDay ? '🌤️' : '🌙', 'Mainly Clear'],
+      2: ['⛅', 'Partly Cloudy'],
+      3: ['☁️', 'Overcast'],
+      45: ['🌫️', 'Foggy'],
+      48: ['🌫️', 'Icy Fog'],
+      51: ['🌦️', 'Light Drizzle'],
+      53: ['🌦️', 'Drizzle'],
+      55: ['🌧️', 'Heavy Drizzle'],
+      61: ['🌧️', 'Light Rain'],
+      63: ['🌧️', 'Rain'],
+      65: ['🌧️', 'Heavy Rain'],
+      71: ['🌨️', 'Light Snow'],
+      73: ['❄️', 'Snow'],
+      75: ['❄️', 'Heavy Snow'],
+      80: ['🌦️', 'Rain Showers'],
+      81: ['🌧️', 'Moderate Showers'],
+      82: ['⛈️', 'Heavy Showers'],
+      95: ['⛈️', 'Thunderstorm'],
+      96: ['⛈️', 'Thunderstorm + Hail'],
+      99: ['⛈️', 'Severe Thunderstorm'],
+    };
+    return map[code] || ['🌡️', 'Unknown'];
+  }
+
+  function farmerTip(temp, rain, wind, humidity) {
+    if (rain > 70) return "🚫 High chance of rain today. Avoid spraying pesticides or fertilizers — wait for clear weather. Cover stored produce and check drainage in fields.";
+    if (rain > 40) return "⚠️ Moderate rain expected. Hold off on irrigation. Good time to check bunds and water channels in your fields.";
+    if (temp > 38) return "🔥 Extreme heat today! Water your crops early morning or after sunset. Ensure livestock have enough shade and drinking water.";
+    if (temp > 32) return "☀️ Hot day ahead. Irrigate your fields in the early morning to reduce evaporation. Mulching will help retain soil moisture.";
+    if (temp < 10) return "🥶 Cold weather. Protect sensitive crops with covers. Frost risk — check young seedlings in the morning.";
+    if (wind > 40) return "💨 Strong winds today. Avoid spraying any chemicals. Support tall crops like maize or sugarcane with staking.";
+    if (humidity > 80) return "🍄 High humidity — increased risk of fungal diseases. Inspect leaves carefully and ensure good air circulation in crops.";
+    return "✅ Good farming conditions today! Ideal time for field work, sowing, or applying fertilizers. Happy farming! 🌾";
+  }
+
+  function dayName(dateStr, i) {
+    if (i === 0) return 'Today';
+    if (i === 1) return 'Tomorrow';
+    return new Date(dateStr).toLocaleDateString('en-IN', { weekday: 'short' });
+  }
+
+  function show(id) { document.getElementById(id).classList.remove('hidden'); }
+  function hide(id) { document.getElementById(id).classList.add('hidden'); }
+
+  async function fetchWeather(lat, lon, name) {
+    hide('errorMsg'); hide('weatherData');
+    show('loader');
+
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,precipitation_probability,surface_pressure,uv_index,is_day&hourly=temperature_2m,weather_code,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=7`;
+      const res = await fetch(url);
+      const d = await res.json();
+      const c = d.current;
+
+      // Current
+      const [mainIco, condText] = decodeWMO(c.weather_code, c.is_day);
+      document.getElementById('locName').textContent = name;
+      document.getElementById('mainIcon').textContent = mainIco;
+      document.getElementById('mainTemp').innerHTML = `${Math.round(c.temperature_2m)}<sup>°C</sup>`;
+      document.getElementById('feelsLike').textContent = `Feels like ${Math.round(c.apparent_temperature)}°C`;
+      document.getElementById('conditionText').textContent = condText;
+      document.getElementById('humidity').textContent = c.relative_humidity_2m + '%';
+      document.getElementById('windSpeed').textContent = Math.round(c.wind_speed_10m) + ' km/h';
+      document.getElementById('rainChance').textContent = (c.precipitation_probability ?? 0) + '%';
+      document.getElementById('uvIndex').textContent = Math.round(c.uv_index ?? 0);
+      document.getElementById('pressure').textContent = Math.round(c.surface_pressure) + ' hPa';
+
+      // Farmer tip
+      document.getElementById('tipText').textContent = farmerTip(c.temperature_2m, c.precipitation_probability ?? 0, c.wind_speed_10m, c.relative_humidity_2m);
+
+      // Hourly (next 12 hours)
+      const nowHour = new Date().getHours();
+      const times = d.hourly.time;
+      const hrs = [], startIdx = times.findIndex(t => new Date(t).getHours() === nowHour && new Date(t).toDateString() === new Date().toDateString());
+      const si = startIdx === -1 ? 0 : startIdx;
+      let html = '';
+      for (let i = si; i < si + 12 && i < times.length; i++) {
+        const [ico] = decodeWMO(d.hourly.weather_code[i], 1);
+        const hLabel = i === si ? 'Now' : new Date(times[i]).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        html += `<div class="hour-card${i===si?' now':''}"><div class="h-time">${hLabel}</div><div class="h-ico">${ico}</div><div class="h-temp">${Math.round(d.hourly.temperature_2m[i])}°</div><div class="h-rain">💧 ${d.hourly.precipitation_probability[i]??0}%</div></div>`;
+      }
+      document.getElementById('hourlyRow').innerHTML = html;
+
+      // 7-day
+      const dd = d.daily;
+      let whtml = '';
+      for (let i = 0; i < dd.time.length; i++) {
+        const [dico] = decodeWMO(dd.weather_code[i]);
+        whtml += `<div class="day-row">
+          <span class="d-name">${dayName(dd.time[i], i)}</span>
+          <span class="d-ico">${dico}</span>
+          <span class="d-rain">💧 ${dd.precipitation_probability_max[i]}%</span>
+          <span class="d-temps"><span class="hi">${Math.round(dd.temperature_2m_max[i])}°</span><span class="lo">${Math.round(dd.temperature_2m_min[i])}°</span></span>
+        </div>`;
+      }
+      document.getElementById('weekGrid').innerHTML = whtml;
+      document.getElementById('updatedAt').textContent = 'Updated: ' + new Date().toLocaleTimeString('en-IN') + ' · Powered by Open-Meteo';
+
+      hide('loader'); show('weatherData');
+    } catch(e) {
+      hide('loader'); show('errorMsg');
+    }
+  }
+
+  async function searchCity() {
+    const city = document.getElementById('cityInput').value.trim();
+    if (!city) return;
+    hide('errorMsg'); hide('weatherData'); show('loader');
+    try {
+      const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`);
+      const gd = await geo.json();
+      if (!gd.results || !gd.results.length) { hide('loader'); show('errorMsg'); return; }
+      const r = gd.results[0];
+      fetchWeather(r.latitude, r.longitude, `${r.name}, ${r.country}`);
+    } catch { hide('loader'); show('errorMsg'); }
+  }
+
+  function getLocation() {
+    if (!navigator.geolocation) { alert('Geolocation not supported.'); return; }
+    show('loader'); hide('weatherData'); hide('errorMsg');
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const { latitude: lat, longitude: lon } = pos.coords;
+      // Reverse geocode with Open-Meteo's geocoding
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+        const d = await res.json();
+        const name = d.address?.city || d.address?.town || d.address?.village || d.address?.county || 'Your Location';
+        fetchWeather(lat, lon, name + ', ' + (d.address?.state || ''));
+      } catch {
+        fetchWeather(lat, lon, 'Your Location');
+      }
+    }, () => { hide('loader'); show('errorMsg'); document.getElementById('errorMsg').textContent = '📍 Location access denied. Please search by city name.'; });
+  }
+
+  // Enter key support
+  document.getElementById('cityInput').addEventListener('keydown', e => { if (e.key === 'Enter') searchCity(); });
+
+  // Auto-load with a default agricultural region (Hyderabad for Telangana farmers)
+  window.onload = () => {
+    document.getElementById('cityInput').value = 'Hyderabad';
+    searchCity();
+  };
+</script>
+</body>
+</html>
